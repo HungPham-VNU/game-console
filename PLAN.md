@@ -54,13 +54,15 @@ Three tracks run side by side: **F = firmware**, **E = enclosure**, **M = main b
 - **Exit:** `pio run` succeeds ✔ (untested on hardware: panel invert/rgb_order still to tune in M1/M3)
 
 ## F2 – Retro-Go target *(while shipping)*
-- [ ] Copy the `gmt024-s3` target to `es3n28p`
-- [ ] Set the LCD pins (CS 10, DC 46, SCK 12, MOSI 11, BL 45) and rotation
-- [ ] Gamepad through the PCF8574: `RG_I2C_GPIO_DRIVER 5`, SDA 16 / SCL 15
-- [ ] SD card: SDMMC, CLK 38 / CMD 40 / D0 39
-- [ ] Battery ADC on IO9, amp enable IO1 (active low)
-- [ ] Builds in Docker (ESP-IDF 4.4.8)
-- **Exit:** a `.img` builds (audio comes later, in M6)
+- [x] New target `es3c28p` (covers ES3N28P too), see `firmware/retro-go-gmt024-s3/README_ES3C28P.md`
+- [x] Set the LCD pins (CS 10, DC 46, SCK 12, MOSI 11, BL 45) and rotation (portrait 240×320, 180°)
+- [x] Gamepad through the PCF8574: `RG_I2C_GPIO_DRIVER 5`, SDA 16 / SCL 15
+- [x] SD card: SDMMC, CLK 38 / CMD 40 / D0 39
+- [x] Battery ADC on IO9 (×2 divider), amp enable IO1 (active low)
+- [x] Builds in Docker (ESP-IDF 4.4.8): `./build-es3c28p-docker.sh [flash]`
+- [x] Flashed (2026-11-08): boots to the launcher at 50 FPS, PSRAM OK, battery ADC reads
+- [ ] Owner confirms the launcher's orientation and colours on screen
+- **Exit:** a `.img` builds ✔ (audio comes later, in M6; buttons/SD need parts)
 
 ## M1 – Board bring-up *(board arrives)*
 - [x] Plug in USB and check the port appears: `/dev/ttyACM0` (2026-11-08)

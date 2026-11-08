@@ -271,6 +271,10 @@ int rg_i2c_gpio_read_port(int port)
 {
     if (port < 0 || port >= gpio_ports_count)
         return -1;
+    // Extender missing (e.g. not wired yet): every read would fail and log an error, ~100 times
+    // a second from the input task. The result would be -1 anyway, so skip the bus traffic.
+    if (!gpio_initialized)
+        return -1;
 #if RG_I2C_GPIO_DRIVER == 4 || RG_I2C_GPIO_DRIVER == 5 // PCF8575/PCF8574
     uint8_t values[gpio_ports_count];
     return rg_i2c_read(gpio_address, -1, &values, gpio_ports_count) ? values[port] : -1;
