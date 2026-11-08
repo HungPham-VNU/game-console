@@ -36,21 +36,22 @@ Three tracks run side by side: **F = firmware**, **E = enclosure**, **M = main b
 - [ ] Second order: dev kit (MX1.25 pigtails, PCF8574, buttons, breadboard, speaker)
 - [ ] Third order (after measuring the board): battery, slide switch, final buttons, case hardware
 - [ ] Order everything in [SHOPPING.md](SHOPPING.md) §1–2
-- [ ] Ask the seller: "Is it **ESP32-S3 N16R8** (8 MB PSRAM)?"
+- [x] N16R8 (8 MB PSRAM) confirmed on the real board (2026-11-08). Version: **ES3C28P (touch)**
 - [ ] Battery plug = MX1.25 2-pin, or order pigtails
 - [ ] Decide: own printer or print service
 - [ ] Install VS Code + PlatformIO, Docker, OpenSCAD
 - [ ] `sudo usermod -aG dialout $USER`, then log out and back in (serial port access)
 
 ## F1 – Brick Game firmware skeleton *(while shipping)*
-- [ ] PlatformIO project `brick-game/` for ESP32-S3 N16R8
-- [ ] Display driver config for this board's pins (HARDWARE.md §1)
-- [ ] Input module for the PCF8574 (debounce, auto-repeat)
-- [ ] Grid renderer with the LCD look, plus the side panel (score / next / speed / level)
-- [ ] App state machine: MENU → PLAYING ⇄ PAUSED → GAME OVER
-- [ ] Tetris: pieces, collision, rotation with wall kick, line clear, scoring, 7-bag randomizer
-- [ ] Compiles without errors
-- **Exit:** `pio run` succeeds
+- [x] PlatformIO project `brick-game/` for ESP32-S3 N16R8 (builds in Docker via `brick-game/pio.sh`)
+- [x] Display driver config for this board's pins (HARDWARE.md §1)
+- [x] Input module for the PCF8574 (debounce, auto-repeat), BOOT-button fallback
+- [x] Grid renderer with the LCD look, plus the side panel (score / next / speed / level)
+- [x] App state machine: MENU → PLAYING ⇄ PAUSED → GAME OVER
+- [x] Tetris: pieces, collision, rotation with wall kick, line clear, scoring, 7-bag randomizer
+- [x] Compiles without errors or warnings (2026-11-08: RAM 6.4 %, flash 400 KB)
+- [x] Host unit tests for core/ + games/: `make -C brick-game/test_host` (115 checks pass)
+- **Exit:** `pio run` succeeds ✔ (untested on hardware: panel invert/rgb_order still to tune in M1/M3)
 
 ## F2 – Retro-Go target *(while shipping)*
 - [ ] Copy the `gmt024-s3` target to `es3n28p`
@@ -62,10 +63,13 @@ Three tracks run side by side: **F = firmware**, **E = enclosure**, **M = main b
 - **Exit:** a `.img` builds (audio comes later, in M6)
 
 ## M1 – Board bring-up *(board arrives)*
-- [ ] Plug in USB and check the port appears (`/dev/ttyACM0` or `/dev/ttyUSB0`)
+- [x] Plug in USB and check the port appears: `/dev/ttyACM0` (2026-11-08)
+- [x] `esptool flash-id`: Embedded PSRAM 8 MB, 16 MB flash
+- [x] Factory flash backed up to `~/es3c28p-backup/factory-16MB.bin`
 - [ ] Flash a test sketch: screen red → green → blue, backlight on
-- [ ] Serial log shows **PSRAM 8 MB** found
-- [ ] I2C scan shows **0x18** (codec)
+- [x] Serial log shows **PSRAM 8 MB** found (8189 KB, 2026-11-08)
+- [x] I2C scan shows **0x18** (codec), plus **0x38** (touch, ES3C28P)
+- [ ] Owner confirms the colour test on screen (red/green/blue order, "TOP" at the top edge) and the Tetris menu
 - [ ] Test the SD card: list files
 - **Exit:** screen, PSRAM, SD and I2C all confirmed
 
