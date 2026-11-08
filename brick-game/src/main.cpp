@@ -5,6 +5,8 @@
 
 #include "core/App.h"
 #include "core/Platform.h"
+#include "games/Racing.h"
+#include "games/Snake.h"
 #include "games/Tetris.h"
 #include "hal/Display.h"
 #include "hal/Input.h"
@@ -54,7 +56,9 @@ Storage storage;
 EspPlatform platform(storage, sound);
 
 Tetris tetris;
-Game* const kGames[] = {&tetris};
+Snake snake;
+Racing racing;
+Game* const kGames[] = {&tetris, &snake, &racing};   // menu order: game 1, 2, 3
 App app(platform, kGames, sizeof(kGames) / sizeof(kGames[0]));
 Frame frame;
 

@@ -7,6 +7,8 @@
 
 #include "../src/core/App.h"
 #include "../src/core/Font3x5.h"
+#include "../src/games/Racing.h"
+#include "../src/games/Snake.h"
 #include "../src/games/Tetris.h"
 #include "../src/render/Layout.h"
 
@@ -315,6 +317,249 @@ static void testFont() {
     CHECK(cellsOnBoard(f) == 8 * 4);
 }
 
+// ---------------------------------------------------------------- Snake
+
+static void testSnakeBasics() {
+    Snake s;
+    s.reset(1, 0, 0);
+    CHECK(s.length() == Snake::kStartLen);
+    CHECK(s.headX() == Snake::kStartX && s.headY() == Snake::kStartY);
+    CHECK(s.dir() == Snake::Dir::Up);
+    s.debugSetFood(0, 0);   // keep the apple out of the way
+
+    // Moves up one cell per interval.
+    s.update(Snake::stepIntervalFor(0) - 1);
+    CHECK(s.headY() == Snake::kStartY);
+    s.update(Snake::stepIntervalFor(0));
+    CHECK(s.headY() == Snake::kStartY - 1);
+
+    // Reversing is ignored; a perpendicular turn is taken on the next step.
+    s.onButton(Button::Down, ButtonEvent::Press, 0);
+    s.debugStep();
+    CHECK(s.dir() == Snake::Dir::Up);
+    s.onButton(Button::Right, ButtonEvent::Press, 0);
+    s.debugStep();
+    CHECK(s.dir() == Snake::Dir::Right);
+    CHECK(s.headX() == Snake::kStartX + 1);
+
+    // Two buffered turns (Down then Left) are both applied, one per step: a U-turn.
+    const int y = s.headY();
+    s.onButton(Button::Down, ButtonEvent::Press, 0);
+    s.onButton(Button::Left, ButtonEvent::Press, 0);
+    s.debugStep();
+    CHECK(s.dir() == Snake::Dir::Down && s.headY() == y + 1);
+    s.debugStep();
+    CHECK(s.dir() == Snake::Dir::Left);
+
+    // Boost: A held makes steps 3× faster, release restores.
+    s.onButton(Button::A, ButtonEvent::Press, 0);
+    CHECK(s.stepInterval() == Snake::stepIntervalFor(0) / Snake::kBoostDiv);
+    s.onButton(Button::A, ButtonEvent::Release, 0);
+    CHECK(s.stepInterval() == Snake::stepIntervalFor(0));
+
+    CHECK(Snake::stepIntervalFor(0) == 400);
+    CHECK(Snake::stepIntervalFor(50) == 60);
+}
+
+static void testSnakeEatAndGrow() {
+    Snake s;
+    s.reset(2, 0, 0);
+    s.debugSetFood(Snake::kStartX, Snake::kStartY - 1);   // right in front
+    s.debugStep();
+    CHECK(s.length() == Snake::kStartLen + 1);
+    CHECK(s.score() == 10);
+    CHECK(s.takeSfx() == Sfx::Line);
+    // New apple is not on the snake.
+    Frame f;
+    s.draw(f);
+    CHECK(!(s.foodX() == s.headX() && s.foodY() == s.headY()));
+
+    // Level up after kApplesPerLevel apples (feed it straight up the column).
+    Snake t;
+    t.reset(3, 1, 0);
+    for (int i = 0; i < Snake::kApplesPerLevel; ++i) {
+        t.debugSetFood(t.headX(), t.headY() - 1);
+        t.debugStep();
+    }
+    CHECK(t.level() == 1);
+    CHECK(t.length() == Snake::kStartLen + Snake::kApplesPerLevel);
+    // Start speed 1 → L = 1 → 20 points per apple; the level changes after the 8th is scored.
+    CHECK(t.score() == uint32_t(Snake::kApplesPerLevel) * 20);
+}
+
+static void testSnakeDeath() {
+    // Wall.
+    Snake s;
+    s.reset(4, 0, 0);
+    s.debugSetFood(9, 19);
+    for (int i = 0; i < Snake::kStartY && !s.isOver(); ++i) s.debugStep();
+    CHECK(!s.isOver());   // head at y = 0 now
+    s.debugStep();
+    CHECK(s.isOver());
+    CHECK(s.takeSfx() == Sfx::GameOver);
+
+    // Self: grow to 5, then turn into the body (right, down, left).
+    Snake t;
+    t.reset(5, 0, 0);
+    for (int i = 0; i < 2; ++i) {
+        t.debugSetFood(t.headX(), t.headY() - 1);
+        t.debugStep();
+    }
+    CHECK(t.length() == 5);
+    t.debugSetFood(0, 0);
+    t.onButton(Button::Right, ButtonEvent::Press, 0);
+    t.debugStep();
+    t.onButton(Button::Down, ButtonEvent::Press, 0);
+    t.debugStep();
+    t.onButton(Button::Left, ButtonEvent::Press, 0);
+    t.debugStep();
+    CHECK(t.isOver());
+
+    // Following your own tail exactly is fine (the tail moves away): a 2×2 loop with length 4.
+    Snake u;
+    u.reset(6, 0, 0);
+    u.debugSetFood(u.headX(), u.headY() - 1);
+    u.debugStep();   // length 4: head (4,11), body (4,12),(4,13),(4,14)
+    u.debugSetFood(0, 19);
+    const Button loop[] = {Button::Right, Button::Down, Button::Left, Button::Up};
+    for (int lap = 0; lap < 3; ++lap)
+        for (Button b : loop) {
+            u.onButton(b, ButtonEvent::Press, 0);
+            u.debugStep();
+        }
+    CHECK(!u.isOver());
+}
+
+// ---------------------------------------------------------------- Racing
+
+static void testRacingBasics() {
+    Racing r;
+    r.reset(1, 0, 0);
+    CHECK(r.lane() == 0);
+    r.onButton(Button::Right, ButtonEvent::Press, 0);
+    CHECK(r.lane() == 1);
+    r.onButton(Button::Right, ButtonEvent::Press, 0);
+    CHECK(r.lane() == 1);
+    r.onButton(Button::Left, ButtonEvent::Press, 0);
+    CHECK(r.lane() == 0);
+
+    CHECK(Racing::tickIntervalFor(0) == 180);
+    CHECK(Racing::tickIntervalFor(60) == 40);
+    r.onButton(Button::Up, ButtonEvent::Press, 0);
+    CHECK(r.tickInterval() == 90);
+    r.onButton(Button::A, ButtonEvent::Press, 0);
+    r.onButton(Button::Up, ButtonEvent::Release, 0);
+    CHECK(r.tickInterval() == 90);   // A still held
+    r.onButton(Button::A, ButtonEvent::Release, 0);
+    CHECK(r.tickInterval() == 180);
+
+    // Road edges and the player's car are drawn.
+    Frame f;
+    r.draw(f);
+    int edge = 0;
+    for (int y = 0; y < 20; ++y) edge += f.field.get(0, y);
+    CHECK(edge == 15);   // 3 on, 1 off
+    CHECK(f.field.get(Racing::kLaneX[0] + 1, Racing::kPlayerY));
+}
+
+static void testRacingCrash() {
+    // A car coming down the player's lane: rows 11..14 → it first shares a lit cell with
+    // the player (rows 16..19) at y = 14, i.e. on the 3rd tick (the X.X tail and .X. nose miss).
+    Racing r;
+    r.reset(2, 0, 0);
+    r.debugClearCars();
+    r.debugSetCar(0, 11, 0);
+    r.debugTick();
+    r.debugTick();
+    CHECK(!r.isOver());
+    r.debugTick();
+    CHECK(r.isOver());
+    CHECK(r.takeSfx() == Sfx::GameOver);
+
+    // The same car in the other lane passes safely and scores once it leaves the field.
+    Racing s;
+    s.reset(3, 0, 0);
+    s.debugClearCars();
+    s.debugSetCar(0, 10, 1);
+    for (int i = 0; i < 10; ++i) s.debugTick();
+    CHECK(!s.isOver());
+    CHECK(s.passed() == 1);
+    CHECK(s.score() == 10);
+
+    // Steering into a car alongside is a crash.
+    Racing t;
+    t.reset(4, 0, 0);
+    t.debugClearCars();
+    t.debugSetCar(0, Racing::kPlayerY, 1);
+    t.onButton(Button::Right, ButtonEvent::Press, 0);
+    CHECK(t.isOver());
+}
+
+static void testRacingAlwaysPassable() {
+    // A simple bot that moves to the lane whose nearest car is further away must survive
+    // a long run at every speed: spawns never block both lanes at once.
+    for (uint8_t speed = 0; speed <= 9; ++speed) {
+        Racing r;
+        r.reset(1000 + speed, speed, 0);
+        for (int t = 0; t < 3000 && !r.isOver(); ++t) {
+            int threat[2] = {99, 99};   // rows until a car in that lane reaches the player
+            for (int i = 0; i < Racing::kMaxCars; ++i) {
+                const auto& c = r.cars()[i];
+                if (!c.active || c.y > Racing::kPlayerY + Racing::kCarH) continue;
+                const int d = Racing::kPlayerY - (c.y + Racing::kCarH);
+                if (d < threat[c.lane]) threat[c.lane] = d;
+            }
+            const uint8_t want = threat[1] > threat[0] ? 1 : 0;
+            if (threat[r.lane()] < 3 && want != r.lane())
+                r.onButton(want ? Button::Right : Button::Left, ButtonEvent::Press, 0);
+            r.debugTick();
+        }
+        CHECK(!r.isOver());
+        CHECK(r.passed() > 200);
+        CHECK(r.level() >= 1);
+    }
+}
+
+// ---------------------------------------------------------------- menu with all games
+
+static void testMenuThreeGames() {
+    FakePlatform p;
+    p.nvs["hi_snake"] = 77;
+    Tetris t;
+    Snake s;
+    Racing r;
+    Game* games[] = {&t, &s, &r};
+    App app(p, games, 3);
+    app.begin(0);
+    Frame f;
+    app.draw(f);
+    CHECK(std::string(f.status) == "TETRIS");
+    app.onButton(Button::Down, ButtonEvent::Press, 0);
+    app.draw(f);
+    CHECK(std::string(f.status) == "SNAKE");
+    CHECK(f.hud.hiScore == 77);
+    app.onButton(Button::Down, ButtonEvent::Press, 0);
+    app.draw(f);
+    CHECK(std::string(f.status) == "RACING");
+    app.onButton(Button::Down, ButtonEvent::Press, 0);   // wraps
+    app.draw(f);
+    CHECK(std::string(f.status) == "TETRIS");
+    app.onButton(Button::Up, ButtonEvent::Press, 0);     // wraps back
+    app.draw(f);
+    CHECK(std::string(f.status) == "RACING");
+
+    // Start Racing and crash it: its own hi-score key is written.
+    app.onButton(Button::Start, ButtonEvent::Press, 0);
+    CHECK(app.state() == App::State::Playing);
+    uint32_t now = 0;
+    for (int i = 0; i < 20000 && app.state() == App::State::Playing; ++i) {
+        now += 50;
+        app.update(now);
+    }
+    CHECK(app.state() == App::State::Curtain);
+    CHECK(p.nvs.count("hi_racing") == (r.score() > 0 ? 1u : 0u));
+}
+
 static bool overlaps(int ax, int ay, int aw, int ah, int bx, int by, int bw, int bh) {
     return ax < bx + bw && bx < ax + aw && ay < by + bh && by < ay + ah;
 }
@@ -391,6 +636,13 @@ int main() {
     testApp();
     testHiScorePersist();
     testFont();
+    testSnakeBasics();
+    testSnakeEatAndGrow();
+    testSnakeDeath();
+    testRacingBasics();
+    testRacingCrash();
+    testRacingAlwaysPassable();
+    testMenuThreeGames();
     std::printf("%d passed, %d failed\n", g_pass, g_fail);
     return g_fail ? 1 : 0;
 }

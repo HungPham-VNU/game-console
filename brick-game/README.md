@@ -1,7 +1,7 @@
 # Brick Game firmware (F1)
 
 C++ / Arduino / LovyanGFX firmware for the ES3C28P / ES3N28P (ESP32-S3 N16R8).
-Tetris for now; Snake and Racing come in M3.
+Three games: Tetris, Snake, Racing.
 
 ## Build, flash, monitor
 
@@ -24,7 +24,7 @@ The factory firmware is backed up in `~/es3c28p-backup/factory-16MB.bin`.
 ```
 src/
   core/     platform-free: Grid, Frame, Game interface, App state machine, Rng, 3×5 font
-  games/    Tetris (more games implement core/Game.h)
+  games/    Tetris, Snake, Racing (each implements core/Game.h; register in main.cpp kGames)
   render/   LcdRenderer: Frame → screen, segment-LCD look, redraws only what changed
   hal/      Display (LovyanGFX config), Input (PCF8574), Sound (stub), Storage (Preferences)
   main.cpp  wiring + boot diagnostics
@@ -36,14 +36,18 @@ the renderer touches the display.**
 
 ## Controls
 
-| Button | Menu | Tetris | Anywhere |
-|---|---|---|---|
-| UP / DOWN | choose game | UP hard drop · DOWN soft drop | |
-| LEFT / RIGHT | start speed 0–9 | move | |
-| A | start | rotate | |
-| START | start | pause / resume | |
-| B | | | sound on/off |
-| SELECT (hold 1 s) | | | end the game, back to the menu |
+| Button | Menu | 1 Tetris | 2 Snake | 3 Racing | Anywhere |
+|---|---|---|---|---|---|
+| UP | previous game | hard drop | steer | hold = 2× speed | |
+| DOWN | next game | soft drop | steer | | |
+| LEFT / RIGHT | start speed 0–9 | move | steer | change lane | |
+| A | start | rotate | hold = 3× speed | hold = 2× speed | |
+| START | start | pause / resume | ← | ← | |
+| B | | | | | sound on/off |
+| SELECT (hold 1 s) | | | | | end the game, back to the menu |
+
+The menu shows the game number (big digit), the start speed (small digit), the game's icon
+in NEXT, its name under the field, and its own high score.
 
 Without a PCF8574 on the bus, the **BOOT** button acts as **A**, so the bare board can be tested.
 
@@ -75,6 +79,16 @@ If the colours are wrong, set the build flags in `platformio.ini`:
 - red and blue are swapped → `-DLCD_RGB_ORDER=true`
 - upside down → `-DLCD_ROTATION=0` (2 = 180°, which is what the case needs)
 - skip the colour test → `-DBOOT_COLOR_TEST=0`
+
+## Snake rules
+
+Walls and your own body kill; following your own tail is allowed. Up to 2 turns are buffered.
+10 × (L+1) per apple, level up every 8 apples, step 400 ms × 0.85^L (min 60 ms).
+
+## Racing rules
+
+Two lanes; oncoming cars every 10 rows in a random lane (always passable, verified by a bot
+in the host tests). 10 × (L+1) per car passed, level up every 15 cars, tick 180 ms × 0.88^L (min 40 ms).
 
 ## Tetris rules
 

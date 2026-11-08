@@ -1,7 +1,7 @@
 # Host build of core/ + games/ with the unit tests. Usage: make -C test_host
 CXX ?= g++
 CXXFLAGS ?= -std=gnu++17 -O1 -g -Wall -Wextra -fsanitize=address,undefined
-SRC := test_main.cpp ../src/core/App.cpp ../src/games/Tetris.cpp
+SRC := test_main.cpp ../src/core/App.cpp $(wildcard ../src/games/*.cpp)
 
 build/tests: $(SRC) $(wildcard ../src/core/*.h ../src/games/*.h ../src/render/Layout.h)
 	@mkdir -p build

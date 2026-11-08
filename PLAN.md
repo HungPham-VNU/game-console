@@ -87,7 +87,7 @@ Three tracks run side by side: **F = firmware**, **E = enclosure**, **M = main b
 - [ ] Tune colours/rotation (`invert`, `rgb_order`, rotation 180° to match the case)
 - [ ] Play Tetris for 15 minutes with no glitches
 - [ ] High score saved (Preferences), pause/reset work
-- [ ] Add Snake and Racing, plus a game-select menu
+- [x] Add Snake and Racing, plus a game-select menu (2026-11-08, flashed; host-tested, playable with touch)
 - **Exit:** 3 games, high scores survive a reboot
 
 ## M4 – Sound & power
