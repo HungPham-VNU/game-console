@@ -4,6 +4,7 @@
 #   ./pio.sh run -t upload            # build + flash (/dev/ttyACM0)
 #   ./pio.sh device monitor           # serial monitor (Ctrl+C to quit)
 #   ./pio.sh bootlog [seconds]        # reset the board and print its boot log
+#   ./pio.sh listen [seconds]         # print the serial log without resetting
 # Toolchains are cached in ~/.cache/pio-docker, so only the first run is slow.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -28,6 +29,9 @@ if [ -e "$PORT" ]; then
 fi
 [ -t 0 ] && args+=(-it)
 
+if [ "${1:-}" = "listen" ]; then
+  exec docker run "${args[@]}" --entrypoint python "$IMAGE" -u tools/bootlog.py "$PORT" "${2:-30}" noreset
+fi
 if [ "${1:-}" = "bootlog" ]; then
   exec docker run "${args[@]}" --entrypoint python "$IMAGE" -u tools/bootlog.py "$PORT" "${2:-10}"
 fi

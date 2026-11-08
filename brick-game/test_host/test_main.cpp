@@ -8,6 +8,7 @@
 #include "../src/core/App.h"
 #include "../src/core/Font3x5.h"
 #include "../src/games/Tetris.h"
+#include "../src/render/Layout.h"
 
 static int g_fail = 0, g_pass = 0;
 #define CHECK(cond)                                                              \
@@ -314,7 +315,71 @@ static void testFont() {
     CHECK(cellsOnBoard(f) == 8 * 4);
 }
 
+static bool overlaps(int ax, int ay, int aw, int ah, int bx, int by, int bw, int bh) {
+    return ax < bx + bw && bx < ax + aw && ay < by + bh && by < ay + ah;
+}
+
+static void testLayouts() {
+    for (const Layout* L : {&kClassicLayout, &kTouchLayout}) {
+        const int fw = Field::kWidth * L->cell, fh = Field::kHeight * L->cell;
+        // Field + its 2 px border fit on the 240×320 screen and stay left of the panel.
+        CHECK(L->fieldX - 2 >= 0 && L->fieldY - 2 >= 0);
+        CHECK(L->fieldX + fw + 2 <= L->panelX);
+        CHECK(L->fieldY + fh + 2 <= L->statusY);
+        CHECK(L->statusY + 16 <= 320);
+        CHECK(L->panelRight < 240);
+        CHECK(L->nextGridX + 4 * L->cell <= L->panelRight + 1);
+    }
+    // Touch buttons: on screen, below the status line, never overlapping each other.
+    for (int i = 0; i < kTouchButtonCount; ++i) {
+        const auto& a = kTouchButtons[i];
+        CHECK(a.x >= 0 && a.y >= 0 && a.x + a.w <= 240 && a.y + a.h <= 320);
+        CHECK(a.y >= kTouchLayout.statusY + 16);
+        for (int j = i + 1; j < kTouchButtonCount; ++j) {
+            const auto& b = kTouchButtons[j];
+            CHECK(!overlaps(a.x, a.y, a.w, a.h, b.x, b.y, b.w, b.h));
+        }
+    }
+    // Every logical button has exactly one on-screen button.
+    uint8_t seen = 0;
+    for (const auto& tb : kTouchButtons) {
+        CHECK(!(seen & buttonBit(tb.button)));
+        seen |= buttonBit(tb.button);
+    }
+    CHECK(seen == 0xFF);
+
+    // The D-pad zone must not overlap the other on-screen buttons.
+    for (const auto& tb : kTouchButtons)
+        if (tb.shape != TouchButton::Arrow)
+            CHECK(!overlaps(kDpad.x0, kDpad.y0, kDpad.x1 - kDpad.x0, kDpad.y1 - kDpad.y0,
+                            tb.x - kTouchHitPad, tb.y - kTouchHitPad, tb.w + 2 * kTouchHitPad, tb.h + 2 * kTouchHitPad));
+
+    // Every drawn button is hit at its own centre.
+    for (const auto& tb : kTouchButtons) CHECK(touchHit(tb.x + tb.w / 2, tb.y + tb.h / 2) == buttonBit(tb.button));
+
+    // Real taps logged on the ES3C28P (2026-11-08) that used to miss: centre-of-pad and
+    // between DOWN and RIGHT. They must now resolve to the intended direction.
+    struct Tap { int x, y; Button want; };
+    const Tap taps[] = {
+        {43, 280, Button::Left}, {44, 271, Button::Left},
+        {74, 310, Button::Down}, {74, 314, Button::Down}, {76, 312, Button::Down}, {76, 310, Button::Down},
+        {74, 300, Button::Down}, {79, 302, Button::Down}, {84, 309, Button::Down}, {72, 296, Button::Down},
+        {72, 301, Button::Down},
+        // and taps that already worked keep working
+        {91, 278, Button::Right}, {28, 265, Button::Left}, {69, 312, Button::Down},
+        {120, 281, Button::Start}, {216, 251, Button::A}, {175, 288, Button::B}, {239, 247, Button::A},
+    };
+    for (const auto& t : taps) {
+        const bool ok = touchHit(t.x, t.y) == buttonBit(t.want);
+        if (!ok) std::printf("  tap (%d,%d) -> 0x%02X\n", t.x, t.y, touchHit(t.x, t.y));
+        CHECK(ok);
+    }
+    CHECK(touchHit(kDpad.cx, kDpad.cy) == 0);   // dead centre is neutral
+    CHECK(touchHit(60, 100) == 0);              // playfield is not a button
+}
+
 int main() {
+    testLayouts();
     testShapes();
     testDropInterval();
     testBag();

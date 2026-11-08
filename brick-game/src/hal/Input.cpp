@@ -26,11 +26,11 @@ uint8_t Input::readRaw() {
     return stable_;   // keep the last known state on a bus error
 }
 
-uint8_t Input::poll(uint32_t nowMs, Event* out, uint8_t max) {
+uint8_t Input::poll(uint32_t nowMs, uint8_t extra, Event* out, uint8_t max) {
     if (nowMs - lastPoll_ < kPollMs) return 0;
     lastPoll_ = nowMs;
 
-    const uint8_t raw = readRaw();
+    const uint8_t raw = uint8_t(readRaw() | extra);
     const uint8_t next = raw == lastRaw_ ? raw : stable_;   // accept only after 2 equal reads
     lastRaw_ = raw;
 

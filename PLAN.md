@@ -66,10 +66,11 @@ Three tracks run side by side: **F = firmware**, **E = enclosure**, **M = main b
 - [x] Plug in USB and check the port appears: `/dev/ttyACM0` (2026-11-08)
 - [x] `esptool flash-id`: Embedded PSRAM 8 MB, 16 MB flash
 - [x] Factory flash backed up to `~/es3c28p-backup/factory-16MB.bin`
-- [ ] Flash a test sketch: screen red → green → blue, backlight on
+- [x] Flash a test sketch: screen red → green → blue, backlight on (boot colour test in brick-game)
 - [x] Serial log shows **PSRAM 8 MB** found (8189 KB, 2026-11-08)
 - [x] I2C scan shows **0x18** (codec), plus **0x38** (touch, ES3C28P)
-- [ ] Owner confirms the colour test on screen (red/green/blue order, "TOP" at the top edge) and the Tetris menu
+- [x] Owner confirms the colour test on screen (red/green/blue order, "TOP" at the top edge) and the Tetris menu
+- [x] Touch (FT6336G) works: on-screen buttons let Tetris be played without the PCF8574 (2026-11-08)
 - [ ] Test the SD card: list files
 - **Exit:** screen, PSRAM, SD and I2C all confirmed
 

@@ -47,6 +47,23 @@ the renderer touches the display.**
 
 Without a PCF8574 on the bus, the **BOOT** button acts as **A**, so the bare board can be tested.
 
+### Touch buttons (ES3C28P)
+
+If the FT6336G touch panel answers and no PCF8574 is wired, the firmware switches to a
+compact layout: a 10 px-cell playfield on top and on-screen D-pad, SELECT, START, B and A
+below. Force a layout with `-DTOUCH_UI=0` (classic) or `-DTOUCH_UI=1` (touch).
+
+- Touches go through the same debounce and auto-repeat as physical buttons; two fingers work.
+- The D-pad is one zone: the direction follows the finger's offset from the centre, so
+  there are no dead gaps between arrows.
+- Touch is read directly over Wire (not LovyanGFX's touch driver) because it shares the
+  I2C bus with the ES8311 and PCF8574.
+- Each tap logs `[touch] raw=… screen=… button=…`; `-DTOUCH_LOG=0` silences it,
+  `-DTOUCH_DEBUG` dumps the raw registers. With `LCD_ROTATION 2` no axis flip is needed;
+  if you change the rotation, see `TOUCH_FLIP_X/Y` in `src/hal/Touch.h`.
+
+`./pio.sh listen [s]` prints the serial log without resetting; `./pio.sh bootlog [s]` resets first.
+
 ## Boot diagnostics (serial)
 
 At startup the serial log prints chip, flash, PSRAM, heap and an I2C scan. Expected addresses on the

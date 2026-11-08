@@ -10,7 +10,14 @@
 #include "hal/Input.h"
 #include "hal/Sound.h"
 #include "hal/Storage.h"
+#include "hal/Touch.h"
 #include "render/LcdRenderer.h"
+
+// Screen layout: -1 = auto (touch layout if the touch panel answers and no PCF8574 is
+// wired), 0 = always classic, 1 = always touch.
+#ifndef TOUCH_UI
+#define TOUCH_UI -1
+#endif
 
 #ifndef BOOT_COLOR_TEST
 #define BOOT_COLOR_TEST 1   // red/green/blue/white/black at boot, to check invert/rgb_order
@@ -41,6 +48,7 @@ private:
 Display display;
 LcdRenderer renderer(display);
 Input input;
+Touch touch;
 Sound sound;
 Storage storage;
 EspPlatform platform(storage, sound);
@@ -80,6 +88,7 @@ void printDiagnostics() {
     }
     if (!found) Serial.println("  (nothing found)");
     Serial.printf("Buttons   : %s\n", input.hasExpander() ? "PCF8574 @0x20" : "PCF8574 not found -> BOOT button = A");
+    Serial.printf("Touch     : %s\n", touch.present() ? "FT6336G @0x38" : "not found");
     Serial.println("======================================");
 }
 
@@ -110,6 +119,7 @@ void setup() {
     sound.begin();
     Wire.begin(kI2cSda, kI2cScl, kI2cHz);
     input.begin();
+    touch.begin();
 
     display.init();
     display.setRotation(LCD_ROTATION);
@@ -120,7 +130,9 @@ void setup() {
     colorTest();
 #endif
 
-    renderer.begin();
+    const bool touchUi = TOUCH_UI == 1 || (TOUCH_UI == -1 && touch.present() && !input.hasExpander());
+    Serial.printf("Layout    : %s\n", touchUi ? "touch (on-screen buttons)" : "classic");
+    renderer.begin(touchUi ? kTouchLayout : kClassicLayout);
     app.begin(millis());
 }
 
@@ -128,12 +140,13 @@ void loop() {
     const uint32_t now = millis();
 
     Input::Event ev[16];
-    const uint8_t n = input.poll(now, ev, 16);
+    const uint8_t touchHeld = renderer.layout().touchButtons ? touch.poll(now) : 0;
+    const uint8_t n = input.poll(now, touchHeld, ev, 16);
     for (uint8_t i = 0; i < n; ++i) app.onButton(ev[i].button, ev[i].type, now);
 
     app.update(now);
     app.draw(frame);
-    renderer.present(frame);
+    renderer.present(frame, touchHeld);
 
     delay(1);
 }

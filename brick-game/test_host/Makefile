@@ -3,7 +3,7 @@ CXX ?= g++
 CXXFLAGS ?= -std=gnu++17 -O1 -g -Wall -Wextra -fsanitize=address,undefined
 SRC := test_main.cpp ../src/core/App.cpp ../src/games/Tetris.cpp
 
-build/tests: $(SRC) $(wildcard ../src/core/*.h ../src/games/*.h)
+build/tests: $(SRC) $(wildcard ../src/core/*.h ../src/games/*.h ../src/render/Layout.h)
 	@mkdir -p build
 	$(CXX) $(CXXFLAGS) -o $@ $(SRC)
 

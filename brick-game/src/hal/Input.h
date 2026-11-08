@@ -5,7 +5,7 @@
 // 8 buttons on a PCF8574 @ 0x20 (P0..P7 = Button enum order, active low).
 // Wire must already be started on SDA 16 / SCL 15 (the bus is shared with the ES8311 and touch).
 // Fallback: with no PCF8574 on the bus, the BOOT button (IO0) acts as A so the bare board
-// can still be tested (A also starts a game from the menu).
+// can still be tested (A also starts a game from the menu). Touch buttons come in via poll().
 class Input {
 public:
     static constexpr uint8_t kAddr = 0x20;
@@ -24,7 +24,9 @@ public:
     bool hasExpander() const { return expander_; }
 
     // Returns the number of events written to out (at most max).
-    uint8_t poll(uint32_t nowMs, Event* out, uint8_t max);
+    // extra: buttons held by another source (on-screen touch buttons), OR-ed in before
+    // debouncing so every source gets the same debounce and auto-repeat.
+    uint8_t poll(uint32_t nowMs, uint8_t extra, Event* out, uint8_t max);
 
     uint8_t held() const { return stable_; }   // bit per Button
     uint32_t readErrors() const { return errors_; }
